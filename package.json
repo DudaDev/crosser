@@ -17,6 +17,7 @@
   },
   "homepage": "https://github.com/ramybenaroya/cross-frame-session-creator",
   "dependencies": {
-    "object-assign": "^2.0.0"
+    "object-assign": "^2.0.0",
+    "rsvp": "^3.0.17"
   }
 }

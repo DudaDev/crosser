@@ -1,4 +1,5 @@
 var assign = require('object-assign');
+var RSVP = require('rsvp');
 
 var _sessionHandlers = {};
 var _listeners = {};
@@ -19,7 +20,7 @@ assign(privateAPI, {
 		if (event.origin === _otherOrigin &&
 			message &&
 			message.sessionId &&
-			message.sessionType &&
+			message.sessionName &&
 			_sessionHandlers[message.sessionId] &&
 			message.creator === _id) {
 
@@ -29,7 +30,7 @@ assign(privateAPI, {
 			event.origin === _otherOrigin &&
 			message &&
 			message.sessionId &&
-			message.sessionType &&
+			message.sessionName &&
 			message.creator !== _id) {
 
 			privateAPI.throwBackSession(event);
@@ -52,15 +53,15 @@ assign(privateAPI, {
 
 	throwBackSession: function(event) {
 		var message = event.data,
-			sessionType = message.sessionType;
+			sessionName = message.sessionName;
 
-		Object.keys(_listeners[message.sessionType]).forEach(function(handlerId) {
-			var callbackResult = _listeners[sessionType][handlerId](message.payload);
+		Object.keys(_listeners[message.sessionName]).forEach(function(handlerId) {
+			var callbackResult = _listeners[sessionName][handlerId](message.payload);
 			if (callbackResult && callbackResult.then) {
 				callbackResult.then(function(resolvedPayload) {
 					privateAPI.send({
 						sessionId: message.sessionId,
-						sessionType: sessionType,
+						sessionName: sessionName,
 						payload: resolvedPayload,
 						creator: message.creator
 					});
@@ -68,7 +69,7 @@ assign(privateAPI, {
 			} else {
 				privateAPI.send({
 					sessionId: message.sessionId,
-					sessionType: sessionType,
+					sessionName: sessionName,
 					payload: callbackResult,
 					creator: message.creator
 				});
@@ -96,33 +97,29 @@ var API = {};
 
 assign(API, {
 
-	create: function(options) {
-		_otherFrameWindow = options.communicateWith.frameWindow;
-		_otherOrigin = options.communicateWith.origin;
+	start: function(otherFrameWindow, origin) {
+		_otherFrameWindow = otherFrameWindow;
+		_otherOrigin = origin || '*';
 		_id = privateAPI.generateId()
 
 		if (!_otherFrameWindow || !_otherFrameWindow.postMessage) {
 			throw new Error('Missing frame to communicate with');
 		}
 
-		if (!_otherOrigin) {
-			throw new Error('No origin has need specified');
-		}
-
 		window.addEventListener("message", privateAPI.receive, false);
 	},
 
-	destroy: function() {
-		Object.keys(_listeners).forEach(API.removeListeners);
+	stop: function() {
+		Object.keys(_listeners).forEach(API.removeAllListeners);
 		Object.keys(_sessionHandlers).forEach(API.deleteSession);
 		_otherFrameWindow = null;
 		_otherOrigin = null;
 		_id = null;
 	},
 
-	create: function(sessionType, payload) {
+	create: function(sessionName, payload) {
 		var sessionId = privateAPI.generateId(),
-			promise = new Promise(function(resolve, reject) {
+			promise = new RSVP.Promise(function(resolve, reject) {
 				_sessionHandlers[sessionId] = {
 					resolve: resolve,
 					reject: reject
@@ -131,7 +128,7 @@ assign(API, {
 
 		privateAPI.send({
 			sessionId: sessionId,
-			sessionType: sessionType,
+			sessionName: sessionName,
 			payload: payload,
 			creator: _id
 		});
@@ -143,26 +140,26 @@ assign(API, {
 		privateAPI.deleteSession(sessionId);
 	},
 
-	addListener: function(sessionType, callback) {
+	engageSession: function(sessionName, callback) {
 		var handlerId = privateAPI.generateId()
 
-		_listeners[sessionType] = _listeners[sessionType] || {};
-		_listeners[sessionType][handlerId] = callback;
+		_listeners[sessionName] = _listeners[sessionName] || {};
+		_listeners[sessionName][handlerId] = callback;
 
 		return handlerId;
 	},
 
-	removeListener: function(sessionType, handlerId) {
-		delete _listeners[sessionType][handlerId];
-		_listeners[sessionType][handlerId] = null;
+	removeListener: function(sessionName, handlerId) {
+		delete _listeners[sessionName][handlerId];
+		_listeners[sessionName][handlerId] = null;
 	},
 
-	removeListeners: function(sessionType) {
-		Object.keys(_listeners[sessionType]).forEach(function(handlerId) {
-			API.removeListener(sessionType, handlerId);
+	removeAllListeners: function(sessionName) {
+		Object.keys(_listeners[sessionName]).forEach(function(handlerId) {
+			API.removeListener(sessionName, handlerId);
 		});
-		delete _listeners[sessionType];
-		_listeners[sessionType] = null;
+		delete _listeners[sessionName];
+		_listeners[sessionName] = null;
 	}
 
 });
