@@ -117,7 +117,7 @@ Crosser.prototype.startSession = function(sessionName, payload) {
 				resolve: resolve,
 				reject: reject
 			};
-		});
+		}.bind(this));
 
 	this._postMessage({
 		sessionId: sessionId,

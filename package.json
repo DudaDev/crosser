@@ -1,6 +1,6 @@
 {
   "name": "crosser",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "description": "Cross-frame sessions service",
   "main": "index.js",
   "scripts": {
