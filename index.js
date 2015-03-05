@@ -1,7 +1,7 @@
 var assign = require('object-assign');
 var RSVP = require('rsvp');
 
-var generateId: function() {
+var generateId = function() {
 	return new Date().getTime().toString();
 };
 
@@ -108,7 +108,6 @@ Crosser.prototype.destroy = function() {
 	this._otherFrameWindow = null;
 	this._otherOrigin = null;
 	this._id = null;
-	this = null;
 };
 
 Crosser.prototype.startSession = function(sessionName, payload) {
