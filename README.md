@@ -33,7 +33,7 @@ var crosser = new Crosser(frame1.contentWindow, 'http://frame1.origin.com');
 // Subscribe to a session
 crosser.subscribe('session-name', function(payloadFromFrame1){
 	alert(payloadFromFrame1.message); // 'message from frame1'
-	return {message: 'message from frame1'}
+	return {message: 'message from frame2'}
 });
 
 ```
