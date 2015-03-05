@@ -74,7 +74,7 @@ Crosser.prototype._throwBackSession = function(event) {
 					payload: resolvedPayload,
 					creator: message.creator
 				});
-			})
+			}.bind(this))
 		} else {
 			this._postMessage({
 				sessionId: message.sessionId,
