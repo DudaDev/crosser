@@ -1,167 +1,154 @@
 var assign = require('object-assign');
 var RSVP = require('rsvp');
 
-var _sessionHandlers = {};
-var _listeners = {};
-var _otherFrameWindow;
-var _otherOrigin;
-var _id;
+var generateId: function() {
+	return new Date().getTime().toString();
+};
 
-var privateAPI = {};
-assign(privateAPI, {
+function Crosser(otherFrameWindow, origin) {
 
-	generateId: function() {
-		return new Date().getTime().toString();
-	},
+	/* private */
+	this._sessionHandlers = {};
+	this._listeners = {};
+	this._otherFrameWindow = otherFrameWindow;
+	this._otherOrigin = origin || '*';
+	this._id = generateId();
 
-	receive: function(event) {
-		var message = event.data;
+	if (!this._otherFrameWindow || !this._otherFrameWindow.postMessage) {
+		throw new Error('Missing frame to communicate with');
+	}
 
-		if (event.origin === _otherOrigin &&
-			message &&
-			message.sessionId &&
-			message.sessionName &&
-			_sessionHandlers[message.sessionId] &&
-			message.creator === _id) {
+	window.addEventListener("message", this._receiveMessage.bind(this), false);
+};
 
-			privateAPI.endSession(event);
 
-		} else if (
-			event.origin === _otherOrigin &&
-			message &&
-			message.sessionId &&
-			message.sessionName &&
-			message.creator !== _id) {
 
-			privateAPI.throwBackSession(event);
-		}
-	},
+Crosser.prototype._receiveMessage = function(event) {
+	var message = event.data;
 
-	endSession: function(event) {
-		var message = event.data;
-		var resolve = _sessionHandlers[message.sessionId].resolve;
-		var reject = _sessionHandlers[message.sessionId].reject;
+	if (event.origin === this._otherOrigin &&
+		message &&
+		message.sessionId &&
+		message.sessionName &&
+		this._sessionHandlers[message.sessionId] &&
+		message.creator === this._id) {
 
-		privateAPI.deleteSession(message.sessionId);
+		this._endSession(event);
 
-		if (message.error) {
-			reject(message.error);
-		} else {
-			resolve(message.payload);
-		}
-	},
+	} else if (
+		event.origin === this._otherOrigin &&
+		message &&
+		message.sessionId &&
+		message.sessionName &&
+		message.creator !== this._id) {
 
-	throwBackSession: function(event) {
-		var message = event.data,
-			sessionName = message.sessionName;
+		this._throwBackSession(event);
+	}
+};
 
-		Object.keys(_listeners[message.sessionName]).forEach(function(handlerId) {
-			var callbackResult = _listeners[sessionName][handlerId](message.payload);
-			if (callbackResult && callbackResult.then) {
-				callbackResult.then(function(resolvedPayload) {
-					privateAPI.send({
-						sessionId: message.sessionId,
-						sessionName: sessionName,
-						payload: resolvedPayload,
-						creator: message.creator
-					});
-				})
-			} else {
-				privateAPI.send({
+Crosser.prototype._endSession = function(event) {
+	var message = event.data;
+	var resolve = this._sessionHandlers[message.sessionId].resolve;
+	var reject = this._sessionHandlers[message.sessionId].reject;
+
+	this._deleteSession(message.sessionId);
+
+	if (message.error) {
+		reject(message.error);
+	} else {
+		resolve(message.payload);
+	}
+};
+
+Crosser.prototype._throwBackSession = function(event) {
+	var message = event.data,
+		sessionName = message.sessionName;
+
+	Object.keys(this._listeners[message.sessionName]).forEach(function(subscriberId) {
+		var callbackResult = this._listeners[sessionName][subscriberId](message.payload);
+		if (callbackResult && callbackResult.then) {
+			callbackResult.then(function(resolvedPayload) {
+				this._postMessage({
 					sessionId: message.sessionId,
 					sessionName: sessionName,
-					payload: callbackResult,
+					payload: resolvedPayload,
 					creator: message.creator
 				});
-			}
-		});
-
-	},
-
-	send: function(message) {
-		_otherFrameWindow.postMessage(message, _otherOrigin);
-	},
-
-	deleteSession: function(sessionId) {
-		delete _sessionHandlers[sessionId].resolve;
-		_sessionHandlers[sessionId].resolve = null;
-		delete _sessionHandlers[sessionId].reject;
-		_sessionHandlers[sessionId].reject = null;
-		delete _sessionHandlers[sessionId];
-		_sessionHandlers[sessionId] = null;
-	}
-});
-
-
-var API = {};
-
-assign(API, {
-
-	start: function(otherFrameWindow, origin) {
-		_otherFrameWindow = otherFrameWindow;
-		_otherOrigin = origin || '*';
-		_id = privateAPI.generateId()
-
-		if (!_otherFrameWindow || !_otherFrameWindow.postMessage) {
-			throw new Error('Missing frame to communicate with');
-		}
-
-		window.addEventListener("message", privateAPI.receive, false);
-	},
-
-	stop: function() {
-		Object.keys(_listeners).forEach(API.removeAllListeners);
-		Object.keys(_sessionHandlers).forEach(API.deleteSession);
-		_otherFrameWindow = null;
-		_otherOrigin = null;
-		_id = null;
-	},
-
-	create: function(sessionName, payload) {
-		var sessionId = privateAPI.generateId(),
-			promise = new RSVP.Promise(function(resolve, reject) {
-				_sessionHandlers[sessionId] = {
-					resolve: resolve,
-					reject: reject
-				};
+			})
+		} else {
+			this._postMessage({
+				sessionId: message.sessionId,
+				sessionName: sessionName,
+				payload: callbackResult,
+				creator: message.creator
 			});
+		}
+	}, this);
 
-		privateAPI.send({
-			sessionId: sessionId,
-			sessionName: sessionName,
-			payload: payload,
-			creator: _id
+};
+
+Crosser.prototype._postMessage = function(message) {
+	this._otherFrameWindow.postMessage(message, this._otherOrigin);
+};
+
+Crosser.prototype._deleteSession = function(sessionId) {
+	delete this._sessionHandlers[sessionId].resolve;
+	this._sessionHandlers[sessionId].resolve = null;
+	delete this._sessionHandlers[sessionId].reject;
+	this._sessionHandlers[sessionId].reject = null;
+	delete this._sessionHandlers[sessionId];
+	this._sessionHandlers[sessionId] = null;
+};
+
+
+
+Crosser.prototype.destroy = function() {
+	Object.keys(this._listeners).forEach(this.unsubscribeSession, this);
+	Object.keys(this._sessionHandlers).forEach(this._deleteSession, this);
+	this._otherFrameWindow = null;
+	this._otherOrigin = null;
+	this._id = null;
+	this = null;
+};
+
+Crosser.prototype.startSession = function(sessionName, payload) {
+	var sessionId = generateId(),
+		promise = new RSVP.Promise(function(resolve, reject) {
+			this._sessionHandlers[sessionId] = {
+				resolve: resolve,
+				reject: reject
+			};
 		});
 
-		return promise;
-	},
+	this._postMessage({
+		sessionId: sessionId,
+		sessionName: sessionName,
+		payload: payload,
+		creator: this._id
+	});
 
-	abort: function(sessionId) {
-		privateAPI.deleteSession(sessionId);
-	},
+	return promise;
+};
 
-	engageSession: function(sessionName, callback) {
-		var handlerId = privateAPI.generateId()
+Crosser.prototype.abortSession = function(sessionId) {
+	this._deleteSession(sessionId);
+};
 
-		_listeners[sessionName] = _listeners[sessionName] || {};
-		_listeners[sessionName][handlerId] = callback;
+Crosser.prototype.subscribeSession = function(sessionName, callback) {
+	var subscriberId = generateId()
 
-		return handlerId;
-	},
-
-	removeListener: function(sessionName, handlerId) {
-		delete _listeners[sessionName][handlerId];
-		_listeners[sessionName][handlerId] = null;
-	},
-
-	removeAllListeners: function(sessionName) {
-		Object.keys(_listeners[sessionName]).forEach(function(handlerId) {
-			API.removeListener(sessionName, handlerId);
-		});
-		delete _listeners[sessionName];
-		_listeners[sessionName] = null;
+	this._listeners[sessionName] = this._listeners[sessionName] || {};
+	if (Object.keys(this._listeners[sessionName]).length > 0) {
+		throw new Error('A session ( ' + sessionName + ' ) can have only one subscriber');
 	}
 
-});
+	this._listeners[sessionName][subscriberId] = callback;
+	return subscriberId;
+};
 
-module.exports = API;
+Crosser.prototype.removeSubscriber = function(sessionName, subscriberId) {
+	delete this._listeners[sessionName][subscriberId];
+	this._listeners[sessionName][subscriberId] = null;
+}
+
+module.exports = Crosser;

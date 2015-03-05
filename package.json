@@ -1,21 +1,21 @@
 {
-  "name": "cross-frame-session-creator",
+  "name": "crosser",
   "version": "0.0.1",
-  "description": "Cross-frame session creator",
+  "description": "Cross-frame sessions service",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/ramybenaroya/cross-frame-session-creator.git"
+    "url": "https://github.com/ramybenaroya/crosser.git"
   },
   "author": "Ramy Ben Aroya",
   "license": "ISC",
   "bugs": {
-    "url": "https://github.com/ramybenaroya/cross-frame-session-creator/issues"
+    "url": "https://github.com/ramybenaroya/crosser/issues"
   },
-  "homepage": "https://github.com/ramybenaroya/cross-frame-session-creator",
+  "homepage": "https://github.com/ramybenaroya/crosser",
   "dependencies": {
     "object-assign": "^2.0.0",
     "rsvp": "^3.0.17"
