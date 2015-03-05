@@ -28,9 +28,8 @@ Crosser.prototype._receiveMessage = function(event) {
 
 	if (event.origin === this._otherOrigin &&
 		message &&
-		message.sessionId &&
 		message.sessionName &&
-		this._sessionHandlers[message.sessionId] &&
+		this._sessionHandlers[message.sessionName] &&
 		message.creator === this._id) {
 
 		this._endSession(event);
@@ -38,7 +37,6 @@ Crosser.prototype._receiveMessage = function(event) {
 	} else if (
 		event.origin === this._otherOrigin &&
 		message &&
-		message.sessionId &&
 		message.sessionName &&
 		message.creator !== this._id) {
 
@@ -48,10 +46,10 @@ Crosser.prototype._receiveMessage = function(event) {
 
 Crosser.prototype._endSession = function(event) {
 	var message = event.data;
-	var resolve = this._sessionHandlers[message.sessionId].resolve;
-	var reject = this._sessionHandlers[message.sessionId].reject;
+	var resolve = this._sessionHandlers[message.sessionName].resolve;
+	var reject = this._sessionHandlers[message.sessionName].reject;
 
-	this._deleteSession(message.sessionId);
+	this._deleteSession(message.sessionName);
 
 	if (message.error) {
 		reject(message.error);
@@ -64,12 +62,11 @@ Crosser.prototype._throwBackSession = function(event) {
 	var message = event.data,
 		sessionName = message.sessionName;
 
-	Object.keys(this._listeners[message.sessionName]).forEach(function(subscriberId) {
+	Object.keys(this._listeners[sessionName]).forEach(function(subscriberId) {
 		var callbackResult = this._listeners[sessionName][subscriberId](message.payload);
 		if (callbackResult && callbackResult.then) {
 			callbackResult.then(function(resolvedPayload) {
 				this._postMessage({
-					sessionId: message.sessionId,
 					sessionName: sessionName,
 					payload: resolvedPayload,
 					creator: message.creator
@@ -77,7 +74,6 @@ Crosser.prototype._throwBackSession = function(event) {
 			}.bind(this))
 		} else {
 			this._postMessage({
-				sessionId: message.sessionId,
 				sessionName: sessionName,
 				payload: callbackResult,
 				creator: message.creator
@@ -91,36 +87,40 @@ Crosser.prototype._postMessage = function(message) {
 	this._otherFrameWindow.postMessage(message, this._otherOrigin);
 };
 
-Crosser.prototype._deleteSession = function(sessionId) {
-	delete this._sessionHandlers[sessionId].resolve;
-	this._sessionHandlers[sessionId].resolve = null;
-	delete this._sessionHandlers[sessionId].reject;
-	this._sessionHandlers[sessionId].reject = null;
-	delete this._sessionHandlers[sessionId];
-	this._sessionHandlers[sessionId] = null;
+Crosser.prototype._deleteSession = function(sessionName) {
+	delete this._sessionHandlers[sessionName].resolve;
+	this._sessionHandlers[sessionName].resolve = null;
+	delete this._sessionHandlers[sessionName].reject;
+	this._sessionHandlers[sessionName].reject = null;
+	delete this._sessionHandlers[sessionName];
+	this._sessionHandlers[sessionName] = null;
 };
 
 
 
 Crosser.prototype.destroy = function() {
-	Object.keys(this._listeners).forEach(this.unsubscribeSession, this);
+	Object.keys(this._listeners).forEach(this.unsubscribe, this);
 	Object.keys(this._sessionHandlers).forEach(this._deleteSession, this);
 	this._otherFrameWindow = null;
 	this._otherOrigin = null;
 	this._id = null;
 };
 
-Crosser.prototype.startSession = function(sessionName, payload) {
-	var sessionId = generateId(),
-		promise = new RSVP.Promise(function(resolve, reject) {
-			this._sessionHandlers[sessionId] = {
+Crosser.prototype.trigger = function(sessionName, payload) {
+	var	promise;
+
+	if (this._sessionHandlers[sessionName]){
+		throw new Error('A session with the name ' + sessionName + ' is still alive');
+	}
+	
+	promise = new RSVP.Promise(function(resolve, reject) {
+			this._sessionHandlers[sessionName] = {
 				resolve: resolve,
 				reject: reject
 			};
 		}.bind(this));
 
 	this._postMessage({
-		sessionId: sessionId,
 		sessionName: sessionName,
 		payload: payload,
 		creator: this._id
@@ -129,11 +129,11 @@ Crosser.prototype.startSession = function(sessionName, payload) {
 	return promise;
 };
 
-Crosser.prototype.abortSession = function(sessionId) {
-	this._deleteSession(sessionId);
+Crosser.prototype.abortSession = function(sessionName) {
+	this._deleteSession(sessionName);
 };
 
-Crosser.prototype.subscribeSession = function(sessionName, callback) {
+Crosser.prototype.subscribe = function(sessionName, callback) {
 	var subscriberId = generateId()
 
 	this._listeners[sessionName] = this._listeners[sessionName] || {};
@@ -145,7 +145,7 @@ Crosser.prototype.subscribeSession = function(sessionName, callback) {
 	return subscriberId;
 };
 
-Crosser.prototype.removeSubscriber = function(sessionName, subscriberId) {
+Crosser.prototype.unsubscribe = function(sessionName, subscriberId) {
 	delete this._listeners[sessionName][subscriberId];
 	this._listeners[sessionName][subscriberId] = null;
 }
