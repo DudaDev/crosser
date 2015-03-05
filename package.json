@@ -1,6 +1,6 @@
 {
   "name": "crosser",
-  "version": "0.0.6",
+  "version": "0.0.7",
   "description": "Cross-frame sessions service",
   "main": "index.js",
   "scripts": {
@@ -11,7 +11,7 @@
     "url": "https://github.com/ramybenaroya/crosser.git"
   },
   "author": "Ramy Ben Aroya",
-  "license": "ISC",
+  "license": "MIT",
   "bugs": {
     "url": "https://github.com/ramybenaroya/crosser/issues"
   },
