@@ -41,10 +41,9 @@ crosser.subscribe('session-name', function(payloadFromFrame1){
 ## Installation
 
 ```
-	npm install crosser --save
+npm install crosser --save
 ```
 
-Provide code examples and explanations of how to get the project.
 
 ## API Reference
 
