@@ -1,4 +1,4 @@
-# Crosser
+# Crosser [![npm version](https://badge.fury.io/js/crosser.svg)](http://badge.fury.io/js/crosser)
 
 A service for communicating between browser frames.  
 
