@@ -3,9 +3,15 @@
 A service for communicating between browser frames.  
 
 ## Life Cycle
-- One of the frames starts a session which the other frame can subscribe to by name via a callback.  
+- One of the frames triggers a session which the other frame can subscribe to by name via a callback.  
 - Once the subscriber's callback is called, its return value will be resolved within the initiator frame and the session will end.  
-Although the session has ended, the subscriber will start next time when a new session with the same name will be initialized.
+Although the session has ended, the subscriber will be called next time when a new session with the same name will be initialized.
+
+## Installation
+
+```
+npm install crosser --save
+```
 
 ## Code Example
 
@@ -17,7 +23,7 @@ var Crosser = require('crosser');
 var crosser = new Crosser(frame2.contentWindow, 'http://frame2.origin.com');
 
 // Start a session
-crosser.start('session-name', {message: 'message from frame1'})
+crosser.trigger('session-name', {message: 'message from frame1'})
 	.then(function(payloadFromFrame2){
 		alert(payloadFromFrame2.message) // 'message from frame2'
 	});
@@ -38,13 +44,6 @@ crosser.subscribe('session-name', function(payloadFromFrame1){
 
 ```
 
-## Installation
-
-```
-npm install crosser --save
-```
-
-
 ## API Reference
 
 ####`constructor(otherFrameWindow, otherFrameOrigin)`
@@ -54,7 +53,7 @@ npm install crosser --save
 - Returns
 	object [`Object`]
 
-####`start (sessionName, payload)`
+####`trigger (sessionName, payload)`
 - arguments:
 	- sessionName [`String`]
 	- payload [`Object`]
