@@ -8,14 +8,14 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/ramybenaroya/crosser.git"
+    "url": "https://github.com/DudaDev/crosser.git"
   },
   "author": "Ramy Ben Aroya",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/ramybenaroya/crosser/issues"
+    "url": "https://github.com/DudaDev/crosser/issues"
   },
-  "homepage": "https://github.com/ramybenaroya/crosser",
+  "homepage": "https://github.com/DudaDev/crosser",
   "dependencies": {
     "rsvp": "^3.0.17"
   }
