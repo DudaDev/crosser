@@ -1,4 +1,3 @@
-var assign = require('object-assign');
 var RSVP = require('rsvp');
 
 var generateId = function() {
@@ -24,9 +23,10 @@ function Crosser(otherFrameWindow, origin) {
 
 
 Crosser.prototype._receiveMessage = function(event) {
-	var message = event.data;
+	var message = event.data,
+		doesOriginMatch = this._doesOriginMatch(event.origin);
 
-	if (event.origin === this._otherOrigin &&
+	if (doesOriginMatch &&
 		message &&
 		message.sessionName &&
 		this._sessionHandlers[message.sessionName] &&
@@ -35,13 +35,25 @@ Crosser.prototype._receiveMessage = function(event) {
 		this._endSession(event);
 
 	} else if (
-		event.origin === this._otherOrigin &&
+		doesOriginMatch &&
 		message &&
 		message.sessionName &&
 		message.creator !== this._id) {
 
 		this._throwBackSession(event);
 	}
+};
+
+Crosser.prototype._doesOriginMatch = function(eventOrigin) {
+	var ret =
+		(
+			eventOrigin === this._otherOrigin ||
+			(
+				this._otherOrigin === '*' &&
+				window.location.origin === eventOrigin
+			}
+		);
+	return ret;
 };
 
 Crosser.prototype._endSession = function(event) {
@@ -107,18 +119,18 @@ Crosser.prototype.destroy = function() {
 };
 
 Crosser.prototype.start = function(sessionName, payload) {
-	var	promise;
+	var promise;
 
-	if (this._sessionHandlers[sessionName]){
+	if (this._sessionHandlers[sessionName]) {
 		throw new Error('A session with the name ' + sessionName + ' is still alive');
 	}
-	
+
 	promise = new RSVP.Promise(function(resolve, reject) {
-			this._sessionHandlers[sessionName] = {
-				resolve: resolve,
-				reject: reject
-			};
-		}.bind(this));
+		this._sessionHandlers[sessionName] = {
+			resolve: resolve,
+			reject: reject
+		};
+	}.bind(this));
 
 	this._postMessage({
 		sessionName: sessionName,
@@ -146,11 +158,11 @@ Crosser.prototype.subscribe = function(sessionName, callback) {
 };
 
 Crosser.prototype.unsubscribe = function(sessionName, subscriberId) {
-	if (!subscriberId){
-		Object.keys(this._listeners[sessionName]).forEach(this.unsubscribe.bind(this, sessionName));	
+	if (!subscriberId) {
+		Object.keys(this._listeners[sessionName]).forEach(this.unsubscribe.bind(this, sessionName));
 	} else {
 		delete this._listeners[sessionName][subscriberId];
-		this._listeners[sessionName][subscriberId] = null;	
+		this._listeners[sessionName][subscriberId] = null;
 	}
 }
 

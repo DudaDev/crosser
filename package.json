@@ -1,6 +1,6 @@
 {
   "name": "crosser",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Cross-frame sessions service",
   "main": "index.js",
   "scripts": {
@@ -17,7 +17,6 @@
   },
   "homepage": "https://github.com/ramybenaroya/crosser",
   "dependencies": {
-    "object-assign": "^2.0.0",
     "rsvp": "^3.0.17"
   }
 }
