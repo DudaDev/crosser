@@ -146,8 +146,12 @@ Crosser.prototype.subscribe = function(sessionName, callback) {
 };
 
 Crosser.prototype.unsubscribe = function(sessionName, subscriberId) {
-	delete this._listeners[sessionName][subscriberId];
-	this._listeners[sessionName][subscriberId] = null;
+	if (!subscriberId){
+		Object.keys(this._listeners[sessionName]).forEach(this.unsubscribe.bind(this, sessionName));	
+	} else {
+		delete this._listeners[sessionName][subscriberId];
+		this._listeners[sessionName][subscriberId] = null;	
+	}
 }
 
 module.exports = Crosser;
