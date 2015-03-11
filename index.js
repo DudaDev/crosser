@@ -51,7 +51,7 @@ Crosser.prototype._doesOriginMatch = function(eventOrigin) {
 			(
 				this._otherOrigin === '*' &&
 				window.location.origin === eventOrigin
-			}
+			)
 		);
 	return ret;
 };
@@ -164,6 +164,6 @@ Crosser.prototype.unsubscribe = function(sessionName, subscriberId) {
 		delete this._listeners[sessionName][subscriberId];
 		this._listeners[sessionName][subscriberId] = null;
 	}
-}
+};
 
 module.exports = Crosser;
