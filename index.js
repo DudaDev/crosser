@@ -118,7 +118,7 @@ Crosser.prototype.destroy = function() {
 	this._id = null;
 };
 
-Crosser.prototype.start = function(sessionName, payload) {
+Crosser.prototype.trigger = function(sessionName, payload) {
 	var promise;
 
 	if (this._sessionHandlers[sessionName]) {
