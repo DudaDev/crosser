@@ -74,7 +74,7 @@ Crosser.prototype._throwBackSession = function(event) {
 	var message = event.data,
 		sessionName = message.sessionName;
 
-	Object.keys(this._listeners[sessionName]).forEach(function(subscriberId) {
+	Object.keys(this._listeners[sessionName] || {}).forEach(function(subscriberId) {
 		var callbackResult = this._listeners[sessionName][subscriberId](message.payload);
 		if (callbackResult && callbackResult.then) {
 			callbackResult.then(function(resolvedPayload) {
@@ -111,8 +111,8 @@ Crosser.prototype._deleteSession = function(sessionName) {
 
 
 Crosser.prototype.destroy = function() {
-	Object.keys(this._listeners).forEach(this.unsubscribe, this);
-	Object.keys(this._sessionHandlers).forEach(this._deleteSession, this);
+	Object.keys(this._listeners || {}).forEach(this.unsubscribe, this);
+	Object.keys(this._sessionHandlers || {}).forEach(this._deleteSession, this);
 	this._otherFrameWindow = null;
 	this._otherOrigin = null;
 	this._id = null;
@@ -149,7 +149,7 @@ Crosser.prototype.subscribe = function(sessionName, callback) {
 	var subscriberId = generateId()
 
 	this._listeners[sessionName] = this._listeners[sessionName] || {};
-	if (Object.keys(this._listeners[sessionName]).length > 0) {
+	if (Object.keys(this._listeners[sessionName] || {}).length > 0) {
 		throw new Error('A session ( ' + sessionName + ' ) can have only one subscriber');
 	}
 
@@ -159,7 +159,7 @@ Crosser.prototype.subscribe = function(sessionName, callback) {
 
 Crosser.prototype.unsubscribe = function(sessionName, subscriberId) {
 	if (!subscriberId) {
-		Object.keys(this._listeners[sessionName]).forEach(this.unsubscribe.bind(this, sessionName));
+		Object.keys(this._listeners[sessionName] || {}).forEach(this.unsubscribe.bind(this, sessionName));
 	} else {
 		delete this._listeners[sessionName][subscriberId];
 		this._listeners[sessionName][subscriberId] = null;

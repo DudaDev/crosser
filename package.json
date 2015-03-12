@@ -1,6 +1,6 @@
 {
   "name": "crosser",
-  "version": "0.1.6",
+  "version": "0.1.7",
   "description": "Cross-frame sessions service",
   "main": "index.js",
   "scripts": {
@@ -18,5 +18,6 @@
   "homepage": "https://github.com/DudaDev/crosser",
   "dependencies": {
     "rsvp": "^3.0.17"
-  }
+  },
+  "devDependencies": {}
 }
