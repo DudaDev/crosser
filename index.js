@@ -100,12 +100,12 @@ Crosser.prototype._postMessage = function(message) {
 };
 
 Crosser.prototype._deleteSession = function(sessionName) {
-	delete this._sessionHandlers[sessionName].resolve;
 	this._sessionHandlers[sessionName].resolve = null;
-	delete this._sessionHandlers[sessionName].reject;
+	delete this._sessionHandlers[sessionName].resolve;
 	this._sessionHandlers[sessionName].reject = null;
-	delete this._sessionHandlers[sessionName];
+	delete this._sessionHandlers[sessionName].reject;
 	this._sessionHandlers[sessionName] = null;
+	delete this._sessionHandlers[sessionName];
 };
 
 
@@ -161,8 +161,8 @@ Crosser.prototype.unsubscribe = function(sessionName, subscriberId) {
 	if (!subscriberId) {
 		Object.keys(this._listeners[sessionName] || {}).forEach(this.unsubscribe.bind(this, sessionName));
 	} else {
-		delete this._listeners[sessionName][subscriberId];
 		this._listeners[sessionName][subscriberId] = null;
+		delete this._listeners[sessionName][subscriberId];
 	}
 };
 
