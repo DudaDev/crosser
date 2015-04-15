@@ -101,6 +101,10 @@ Crosser.prototype._postMessage = function(message) {
 };
 
 Crosser.prototype._deleteSession = function(sessionName) {
+	if (!this._sessionHandlers[sessionName]) {
+		return;
+	}
+
 	this._sessionHandlers[sessionName].resolve = null;
 	delete this._sessionHandlers[sessionName].resolve;
 	this._sessionHandlers[sessionName].reject = null;
