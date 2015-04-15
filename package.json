@@ -4,7 +4,17 @@
   "description": "Cross-frame sessions service",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "STATIC_ROOT=./static watchify -o dist/crosser.js -v -d .",
+    "build-prod": "STATIC_ROOT=./static NODE_ENV=production browserify . | uglifyjs -cm > dist/crosser.min.js",
+    "build-dev": "STATIC_ROOT=./static NODE_ENV=development browserify . > dist/crosser.js",
+    "build": "npm run build-dev && npm run build-prod",
+    "collect-static": "collect-static . ./static",
+    "test": "jest"
+  },
+  "devDependencies": {
+    "browserify": "~4.2.2",
+    "envify": "~2.0.1",
+    "watchify": "~0.10.2"
   },
   "repository": {
     "type": "git",
@@ -18,6 +28,5 @@
   "homepage": "https://github.com/DudaDev/crosser",
   "dependencies": {
     "rsvp": "^3.0.17"
-  },
-  "devDependencies": {}
+  }
 }
