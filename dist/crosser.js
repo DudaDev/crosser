@@ -167,7 +167,9 @@ Crosser.prototype.unsubscribe = function(sessionName, subscriberId) {
 	}
 };
 
+window.Crosser = Crosser;
 module.exports = Crosser;
+
 },{"rsvp":3}],2:[function(require,module,exports){
 // shim for using process in browser
 
