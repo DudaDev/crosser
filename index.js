@@ -166,4 +166,5 @@ Crosser.prototype.unsubscribe = function(sessionName, subscriberId) {
 	}
 };
 
+window.Crosser = Crosser;
 module.exports = Crosser;
