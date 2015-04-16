@@ -6,13 +6,13 @@ var generateId = function() {
 };
 
 function Crosser(otherFrameWindow, origin) {
-
 	/* private */
 	this._sessionHandlers = {};
 	this._listeners = {};
 	this._otherFrameWindow = otherFrameWindow;
 	this._otherOrigin = origin || '*';
 	this._id = generateId();
+	this._events = {};
 
 	if (!this._otherFrameWindow || !this._otherFrameWindow.postMessage) {
 		throw new Error('Missing frame to communicate with');
@@ -21,27 +21,30 @@ function Crosser(otherFrameWindow, origin) {
 	window.addEventListener("message", this._receiveMessage.bind(this), false);
 };
 
-
-
 Crosser.prototype._receiveMessage = function(event) {
 	var message = event.data,
 		doesOriginMatch = this._doesOriginMatch(event.origin);
 
-	if (doesOriginMatch &&
-		message &&
-		message.sessionName &&
-		this._sessionHandlers[message.sessionName] &&
-		message.creator === this._id) {
+	if (!doesOriginMatch || !message) {
+		return;
+	}
 
-		this._endSession(event);
+	if (message.type === 'event') {
+		if (message.eventName && this._events[message.eventName]) {
+			this._fireEvents(event);
+		}
+	} else {
+		if (message.sessionName &&
+			this._sessionHandlers[message.sessionName] &&
+			message.creator === this._id) {
 
-	} else if (
-		doesOriginMatch &&
-		message &&
-		message.sessionName &&
-		message.creator !== this._id) {
+			this._endSession(event);
+		} else if (
+			message.sessionName &&
+			message.creator !== this._id) {
 
-		this._throwBackSession(event);
+			this._throwBackSession(event);
+		}
 	}
 };
 
@@ -101,10 +104,6 @@ Crosser.prototype._postMessage = function(message) {
 };
 
 Crosser.prototype._deleteSession = function(sessionName) {
-	if (!this._sessionHandlers[sessionName]) {
-		return;
-	}
-
 	this._sessionHandlers[sessionName].resolve = null;
 	delete this._sessionHandlers[sessionName].resolve;
 	this._sessionHandlers[sessionName].reject = null;
@@ -112,8 +111,6 @@ Crosser.prototype._deleteSession = function(sessionName) {
 	this._sessionHandlers[sessionName] = null;
 	delete this._sessionHandlers[sessionName];
 };
-
-
 
 Crosser.prototype.destroy = function() {
 	Object.keys(this._listeners || {}).forEach(this.unsubscribe, this);
@@ -169,6 +166,33 @@ Crosser.prototype.unsubscribe = function(sessionName, subscriberId) {
 		this._listeners[sessionName][subscriberId] = null;
 		delete this._listeners[sessionName][subscriberId];
 	}
+};
+
+Crosser.prototype._fireEvents = function(event) {
+	var message = event.data;
+
+	this._events[message.eventName].forEach(function (callback) {
+		callback(message.payload);
+	});
+};
+
+Crosser.prototype.subscribeEvent = function(eventName, callback) {
+	this._events[eventName] = this._events[eventName] || [];
+	this._events[eventName].push(callback);
+};
+
+Crosser.prototype.unsubscribeEvent = function(eventName) {
+	this._events[eventName] = null;
+	delete this._events[eventName];
+};
+
+Crosser.prototype.triggerEvent = function(eventName, payload) {
+	this._postMessage({
+		eventName: eventName,
+		type: 'event',
+		payload: payload,
+		creator: this._id
+	});
 };
 
 window.Crosser = Crosser;
