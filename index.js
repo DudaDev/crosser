@@ -30,7 +30,7 @@ Crosser.prototype._receiveMessage = function(event) {
 
 	if (message.type === 'event') {
 		if (message.eventName && this._events[message.eventName]) {
-			this._fireEvents(event);
+			this._fireEvent(event);
 		}
 	} else {
 		if (message.sessionName &&
@@ -167,7 +167,7 @@ Crosser.prototype.unsubscribe = function(sessionName, subscriberId) {
 	}
 };
 
-Crosser.prototype._fireEvents = function(event) {
+Crosser.prototype._fireEvent = function(event) {
 	var message = event.data;
 
 	this._events[message.eventName].forEach(function (callback) {
