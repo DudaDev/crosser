@@ -27,6 +27,6 @@
   },
   "homepage": "https://github.com/DudaDev/crosser",
   "dependencies": {
-    "rsvp": "^3.0.17"
+    "native-promise-only": "^0.8.0-a"
   }
 }
