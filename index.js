@@ -1,4 +1,4 @@
-var RSVP = require('rsvp');
+var Promise = require('rsvp').Promise;
 
 var generateId = function() {
 	return new Date().getTime().toString();
@@ -126,7 +126,7 @@ Crosser.prototype.trigger = function(sessionName, payload) {
 		throw new Error('A session with the name ' + sessionName + ' is still alive');
 	}
 
-	promise = new RSVP.Promise(function(resolve, reject) {
+	promise = new Promise(function(resolve, reject) {
 		this._sessionHandlers[sessionName] = {
 			resolve: resolve,
 			reject: reject

@@ -1,247 +1,73 @@
-(function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);throw new Error("Cannot find module '"+o+"'")}var f=n[o]={exports:{}};t[o][0].call(f.exports,function(e){var n=t[o][1][e];return s(n?n:e)},f,f.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
-var RSVP = require('rsvp');
-
-var generateId = function() {
-	return new Date().getTime().toString();
-};
-
-function Crosser(otherFrameWindow, origin) {
-	/* private */
-	this._sessionHandlers = {};
-	this._listeners = {};
-	this._otherFrameWindow = otherFrameWindow;
-	this._otherOrigin = origin || '*';
-	this._id = generateId();
-	this._events = {};
-
-	if (!this._otherFrameWindow || !this._otherFrameWindow.postMessage) {
-		throw new Error('Missing frame to communicate with');
-	}
-
-	window.addEventListener("message", this._receiveMessage.bind(this), false);
-};
-
-Crosser.prototype._receiveMessage = function(event) {
-	var message = event.data,
-		doesOriginMatch = this._doesOriginMatch(event.origin);
-
-	if (!doesOriginMatch || !message) {
-		return;
-	}
-
-	if (message.type === 'event') {
-		if (message.eventName && this._events[message.eventName]) {
-			this._fireEvents(event);
-		}
-	} else {
-		if (message.sessionName &&
-			this._sessionHandlers[message.sessionName] &&
-			message.creator === this._id) {
-
-			this._endSession(event);
-		} else if (
-			message.sessionName &&
-			message.creator !== this._id) {
-
-			this._throwBackSession(event);
-		}
-	}
-};
-
-Crosser.prototype._doesOriginMatch = function(eventOrigin) {
-	var ret =
-		(
-			eventOrigin === this._otherOrigin ||
-			(
-				this._otherOrigin === '*' &&
-				window.location.origin === eventOrigin
-			)
-		);
-	return ret;
-};
-
-Crosser.prototype._endSession = function(event) {
-	var message = event.data;
-	var resolve = this._sessionHandlers[message.sessionName].resolve;
-	var reject = this._sessionHandlers[message.sessionName].reject;
-
-	this._deleteSession(message.sessionName);
-
-	if (message.error) {
-		reject(message.error);
-	} else {
-		resolve(message.payload);
-	}
-};
-
-Crosser.prototype._throwBackSession = function(event) {
-	var message = event.data,
-		sessionName = message.sessionName;
-
-	Object.keys(this._listeners[sessionName] || {}).forEach(function(subscriberId) {
-		var callbackResult = this._listeners[sessionName][subscriberId](message.payload);
-		if (callbackResult && callbackResult.then) {
-			callbackResult.then(function(resolvedPayload) {
-				this._postMessage({
-					sessionName: sessionName,
-					payload: resolvedPayload,
-					creator: message.creator
-				});
-			}.bind(this))
-		} else {
-			this._postMessage({
-				sessionName: sessionName,
-				payload: callbackResult,
-				creator: message.creator
-			});
-		}
-	}, this);
-
-};
-
-Crosser.prototype._postMessage = function(message) {
-	this._otherFrameWindow.postMessage(message, this._otherOrigin);
-};
-
-Crosser.prototype._deleteSession = function(sessionName) {
-	this._sessionHandlers[sessionName].resolve = null;
-	delete this._sessionHandlers[sessionName].resolve;
-	this._sessionHandlers[sessionName].reject = null;
-	delete this._sessionHandlers[sessionName].reject;
-	this._sessionHandlers[sessionName] = null;
-	delete this._sessionHandlers[sessionName];
-};
-
-Crosser.prototype.destroy = function() {
-	Object.keys(this._listeners || {}).forEach(this.unsubscribe, this);
-	Object.keys(this._sessionHandlers || {}).forEach(this._deleteSession, this);
-	this._otherFrameWindow = null;
-	this._otherOrigin = null;
-	this._id = null;
-};
-
-Crosser.prototype.trigger = function(sessionName, payload) {
-	var promise;
-
-	if (this._sessionHandlers[sessionName]) {
-		throw new Error('A session with the name ' + sessionName + ' is still alive');
-	}
-
-	promise = new RSVP.Promise(function(resolve, reject) {
-		this._sessionHandlers[sessionName] = {
-			resolve: resolve,
-			reject: reject
-		};
-	}.bind(this));
-
-	this._postMessage({
-		sessionName: sessionName,
-		payload: payload,
-		creator: this._id
-	});
-
-	return promise;
-};
-
-Crosser.prototype.abort = function(sessionName) {
-	this._deleteSession(sessionName);
-};
-
-Crosser.prototype.subscribe = function(sessionName, callback) {
-	var subscriberId = generateId()
-
-	this._listeners[sessionName] = this._listeners[sessionName] || {};
-	if (Object.keys(this._listeners[sessionName] || {}).length > 0) {
-		throw new Error('A session ( ' + sessionName + ' ) can have only one subscriber');
-	}
-
-	this._listeners[sessionName][subscriberId] = callback;
-	return subscriberId;
-};
-
-Crosser.prototype.unsubscribe = function(sessionName, subscriberId) {
-	if (!subscriberId) {
-		Object.keys(this._listeners[sessionName] || {}).forEach(this.unsubscribe.bind(this, sessionName));
-	} else {
-		this._listeners[sessionName][subscriberId] = null;
-		delete this._listeners[sessionName][subscriberId];
-	}
-};
-
-Crosser.prototype._fireEvents = function(event) {
-	var message = event.data;
-
-	this._events[message.eventName].forEach(function (callback) {
-		callback(message.payload);
-	});
-};
-
-Crosser.prototype.subscribeEvent = function(eventName, callback) {
-	this._events[eventName] = this._events[eventName] || [];
-	this._events[eventName].push(callback);
-};
-
-Crosser.prototype.unsubscribeEvent = function(eventName) {
-	this._events[eventName] = null;
-	delete this._events[eventName];
-};
-
-Crosser.prototype.triggerEvent = function(eventName, payload) {
-	this._postMessage({
-		eventName: eventName,
-		type: 'event',
-		payload: payload,
-		creator: this._id
-	});
-};
-
-window.Crosser = Crosser;
-module.exports = Crosser;
-
-},{"rsvp":3}],2:[function(require,module,exports){
+(function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
 // shim for using process in browser
 
 var process = module.exports = {};
+var queue = [];
+var draining = false;
+var currentQueue;
+var queueIndex = -1;
 
-process.nextTick = (function () {
-    var canSetImmediate = typeof window !== 'undefined'
-    && window.setImmediate;
-    var canPost = typeof window !== 'undefined'
-    && window.postMessage && window.addEventListener
-    ;
-
-    if (canSetImmediate) {
-        return function (f) { return window.setImmediate(f) };
+function cleanUpNextTick() {
+    draining = false;
+    if (currentQueue.length) {
+        queue = currentQueue.concat(queue);
+    } else {
+        queueIndex = -1;
     }
-
-    if (canPost) {
-        var queue = [];
-        window.addEventListener('message', function (ev) {
-            var source = ev.source;
-            if ((source === window || source === null) && ev.data === 'process-tick') {
-                ev.stopPropagation();
-                if (queue.length > 0) {
-                    var fn = queue.shift();
-                    fn();
-                }
-            }
-        }, true);
-
-        return function nextTick(fn) {
-            queue.push(fn);
-            window.postMessage('process-tick', '*');
-        };
+    if (queue.length) {
+        drainQueue();
     }
+}
 
-    return function nextTick(fn) {
-        setTimeout(fn, 0);
-    };
-})();
+function drainQueue() {
+    if (draining) {
+        return;
+    }
+    var timeout = setTimeout(cleanUpNextTick);
+    draining = true;
 
+    var len = queue.length;
+    while(len) {
+        currentQueue = queue;
+        queue = [];
+        while (++queueIndex < len) {
+            currentQueue[queueIndex].run();
+        }
+        queueIndex = -1;
+        len = queue.length;
+    }
+    currentQueue = null;
+    draining = false;
+    clearTimeout(timeout);
+}
+
+process.nextTick = function (fun) {
+    var args = new Array(arguments.length - 1);
+    if (arguments.length > 1) {
+        for (var i = 1; i < arguments.length; i++) {
+            args[i - 1] = arguments[i];
+        }
+    }
+    queue.push(new Item(fun, args));
+    if (queue.length === 1 && !draining) {
+        setTimeout(drainQueue, 0);
+    }
+};
+
+// v8 likes predictible objects
+function Item(fun, array) {
+    this.fun = fun;
+    this.array = array;
+}
+Item.prototype.run = function () {
+    this.fun.apply(null, this.array);
+};
 process.title = 'browser';
 process.browser = true;
 process.env = {};
 process.argv = [];
+process.version = ''; // empty string to avoid regexp issues
+process.versions = {};
 
 function noop() {}
 
@@ -255,15 +81,16 @@ process.emit = noop;
 
 process.binding = function (name) {
     throw new Error('process.binding is not supported');
-}
+};
 
 // TODO(shtylman)
 process.cwd = function () { return '/' };
 process.chdir = function (dir) {
     throw new Error('process.chdir is not supported');
 };
+process.umask = function() { return 0; };
 
-},{}],3:[function(require,module,exports){
+},{}],2:[function(require,module,exports){
 (function (process){
 /*!
  * @overview RSVP - a tiny implementation of Promises/A+.
@@ -1937,5 +1764,205 @@ process.chdir = function (dir) {
 }).call(this);
 
 
-}).call(this,require("FWaASH"))
-},{"FWaASH":2}]},{},[1])
+}).call(this,require('_process'))
+},{"_process":1}],3:[function(require,module,exports){
+var Promise = require('rsvp').Promise;
+
+var generateId = function() {
+	return new Date().getTime().toString();
+};
+
+function Crosser(otherFrameWindow, origin) {
+	/* private */
+	this._sessionHandlers = {};
+	this._listeners = {};
+	this._otherFrameWindow = otherFrameWindow;
+	this._otherOrigin = origin || '*';
+	this._id = generateId();
+	this._events = {};
+
+	if (!this._otherFrameWindow || !this._otherFrameWindow.postMessage) {
+		throw new Error('Missing frame to communicate with');
+	}
+
+	window.addEventListener("message", this._receiveMessage.bind(this), false);
+};
+
+Crosser.prototype._receiveMessage = function(event) {
+	var message = event.data,
+		doesOriginMatch = this._doesOriginMatch(event.origin);
+
+	if (!doesOriginMatch || !message) {
+		return;
+	}
+
+	if (message.type === 'event') {
+		if (message.eventName && this._events[message.eventName]) {
+			this._fireEvent(event);
+		}
+	} else {
+		if (message.sessionName &&
+			this._sessionHandlers[message.sessionName] &&
+			message.creator === this._id) {
+
+			this._endSession(event);
+		} else if (
+			message.sessionName &&
+			message.creator !== this._id) {
+
+			this._throwBackSession(event);
+		}
+	}
+};
+
+Crosser.prototype._doesOriginMatch = function(eventOrigin) {
+	var ret =
+		(
+			eventOrigin === this._otherOrigin ||
+			(
+				this._otherOrigin === '*' &&
+				window.location.origin === eventOrigin
+			)
+		);
+	return ret;
+};
+
+Crosser.prototype._endSession = function(event) {
+	var message = event.data;
+	var resolve = this._sessionHandlers[message.sessionName].resolve;
+	var reject = this._sessionHandlers[message.sessionName].reject;
+
+	this._deleteSession(message.sessionName);
+
+	if (message.error) {
+		reject(message.error);
+	} else {
+		resolve(message.payload);
+	}
+};
+
+Crosser.prototype._throwBackSession = function(event) {
+	var message = event.data,
+		sessionName = message.sessionName;
+
+	Object.keys(this._listeners[sessionName] || {}).forEach(function(subscriberId) {
+		var callbackResult = this._listeners[sessionName][subscriberId](message.payload);
+		if (callbackResult && callbackResult.then) {
+			callbackResult.then(function(resolvedPayload) {
+				this._postMessage({
+					sessionName: sessionName,
+					payload: resolvedPayload,
+					creator: message.creator
+				});
+			}.bind(this))
+		} else {
+			this._postMessage({
+				sessionName: sessionName,
+				payload: callbackResult,
+				creator: message.creator
+			});
+		}
+	}, this);
+
+};
+
+Crosser.prototype._postMessage = function(message) {
+	this._otherFrameWindow.postMessage(message, this._otherOrigin);
+};
+
+Crosser.prototype._deleteSession = function(sessionName) {
+	this._sessionHandlers[sessionName].resolve = null;
+	delete this._sessionHandlers[sessionName].resolve;
+	this._sessionHandlers[sessionName].reject = null;
+	delete this._sessionHandlers[sessionName].reject;
+	this._sessionHandlers[sessionName] = null;
+	delete this._sessionHandlers[sessionName];
+};
+
+Crosser.prototype.destroy = function() {
+	Object.keys(this._listeners || {}).forEach(this.unsubscribe, this);
+	Object.keys(this._sessionHandlers || {}).forEach(this._deleteSession, this);
+	this._otherFrameWindow = null;
+	this._otherOrigin = null;
+	this._id = null;
+};
+
+Crosser.prototype.trigger = function(sessionName, payload) {
+	var promise;
+
+	if (this._sessionHandlers[sessionName]) {
+		throw new Error('A session with the name ' + sessionName + ' is still alive');
+	}
+
+	promise = new Promise(function(resolve, reject) {
+		this._sessionHandlers[sessionName] = {
+			resolve: resolve,
+			reject: reject
+		};
+	}.bind(this));
+
+	this._postMessage({
+		sessionName: sessionName,
+		payload: payload,
+		creator: this._id
+	});
+
+	return promise;
+};
+
+Crosser.prototype.abort = function(sessionName) {
+	this._deleteSession(sessionName);
+};
+
+Crosser.prototype.subscribe = function(sessionName, callback) {
+	var subscriberId = generateId()
+
+	this._listeners[sessionName] = this._listeners[sessionName] || {};
+	if (Object.keys(this._listeners[sessionName] || {}).length > 0) {
+		throw new Error('A session ( ' + sessionName + ' ) can have only one subscriber');
+	}
+
+	this._listeners[sessionName][subscriberId] = callback;
+	return subscriberId;
+};
+
+Crosser.prototype.unsubscribe = function(sessionName, subscriberId) {
+	if (!subscriberId) {
+		Object.keys(this._listeners[sessionName] || {}).forEach(this.unsubscribe.bind(this, sessionName));
+	} else {
+		this._listeners[sessionName][subscriberId] = null;
+		delete this._listeners[sessionName][subscriberId];
+	}
+};
+
+Crosser.prototype._fireEvent = function(event) {
+	var message = event.data;
+
+	this._events[message.eventName].forEach(function (callback) {
+		callback(message.payload);
+	});
+};
+
+Crosser.prototype.subscribeEvent = function(eventName, callback) {
+	this._events[eventName] = this._events[eventName] || [];
+	this._events[eventName].push(callback);
+};
+
+Crosser.prototype.unsubscribeEvent = function(eventName) {
+	this._events[eventName] = null;
+	delete this._events[eventName];
+};
+
+Crosser.prototype.triggerEvent = function(eventName, payload) {
+	this._postMessage({
+		eventName: eventName,
+		type: 'event',
+		payload: payload,
+		creator: this._id
+	});
+};
+
+window.Crosser = Crosser;
+module.exports = Crosser;
+
+},{"rsvp":2}]},{},[3]);
