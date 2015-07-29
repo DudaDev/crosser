@@ -1,2 +1,12 @@
+function K() {
+	return this
+}
+
+GLOBAL.window = {
+	postMessage: K,
+	receiveMessage: K,
+	addEventListener: K
+};
+
 require('babel/register');
-require('./unit/module-1-test');
+require('./unit/crosser-test');

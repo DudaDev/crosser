@@ -1,10 +1,11 @@
-import module1 from '../../lib/modules/module-1';
+import Crosser from '../../lib/crosser';
 
 var assert = require("assert")
 describe('Module 1', function() {
 
 	it('it works', function() {
-		assert.equal(module1, 'module-1');
+		var crosser = new Crosser(window);
+		assert.ok(typeof crosser === 'object');
 	});
 
 });
