@@ -62,6 +62,13 @@ crosser.subscribe('session-name', function(payloadFromFrame1){
 - Returns
 	promise [`Promise`]
 
+####`triggerEvent (eventName, payload)`
+- arguments:
+	- eventName [`String`]
+	- payload [`Object`]
+- Returns
+	`undefined`
+
 ####`abort (sessionName)`
 - arguments:
 	- sessionName [`String`]
@@ -74,6 +81,15 @@ crosser.subscribe('session-name', function(payloadFromFrame1){
 ####`unsubscribe (sessionName)`
 - arguments:
 	- sessionName [`String`]
+
+####`subscribeEvent (eventName, callback)`
+- arguments:
+	- eventName [`String`]
+	- callback [`Function`]
+
+####`unsubscribe (eventName)`
+- arguments:
+	- eventName [`String`]
 
 ## License
 
