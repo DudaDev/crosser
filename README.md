@@ -14,6 +14,10 @@ Although the session has ended, the subscriber will be called next time when a n
 ```
 npm install crosser --save
 ```
+or
+```
+bower install crosser --save
+```
 
 ## Code Example
 
