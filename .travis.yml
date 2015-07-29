@@ -15,7 +15,6 @@ before_install:
   - ""
 
 install:
-  - npm install -g bower
   - npm install -g webpack
   - npm install -g eslint-loader
   - npm install
