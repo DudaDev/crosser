@@ -1,0 +1,17 @@
+{
+	"parser": "babel-eslint",
+    "ecmaFeatures": {
+        "blockBindings": true,
+        "forOf": true,
+        "jsx": true,
+        "modules": true
+    },
+    "rules": {
+        "semi": 2,
+        "quotes": 0,
+        "no-underscore-dangle": 0
+    },
+    "env": {
+        "browser": true
+    }
+}

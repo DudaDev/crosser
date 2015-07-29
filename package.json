@@ -1,20 +1,25 @@
 {
   "name": "crosser",
-  "version": "0.1.9",
+  "version": "0.2.0",
   "description": "Cross-frame sessions service",
-  "main": "index.js",
+  "main": "lib/crosser",
   "scripts": {
-    "start": "STATIC_ROOT=./static watchify -o dist/crosser.js -v -d .",
-    "build-prod": "STATIC_ROOT=./static NODE_ENV=production browserify . | uglifyjs -cm > dist/crosser.min.js",
-    "build-dev": "STATIC_ROOT=./static NODE_ENV=development browserify . > dist/crosser.js",
-    "build": "npm run build-dev && npm run build-prod",
-    "collect-static": "collect-static . ./static",
-    "test": "jest"
+    "test": "mocha"
   },
   "devDependencies": {
-    "browserify": "~4.2.2",
-    "envify": "~2.0.1",
-    "watchify": "~0.10.2"
+    "babel": "^5.6.14",
+    "babel-core": "^5.6.15",
+    "babel-loader": "^5.3.1",
+    "chai": "^3.0.0",
+    "eslint": "^0.24.0",
+    "eslint-loader": "^0.14.1",
+    "express": "^4.13.1",
+    "express.io": "^1.1.13",
+    "gulp": "^3.9.0",
+    "gulp-util": "^3.0.6",
+    "gulp-watch": "^4.2.4",
+    "mocha": "^2.2.5",
+    "webpack": "^1.10.1"
   },
   "repository": {
     "type": "git",
